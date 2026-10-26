@@ -1,0 +1,11 @@
+{
+  "uuid": "ubuntutool@zhaoshi2000",
+  "name": "UbuntuTool",
+  "description": "Desktop toolbox: Windows-style shortcuts, Win+V text/image clipboard history, and Alt+A rectangular screenshots with red rectangles and arrows. Stores clipboard and screenshots locally; no cloud service or telemetry.",
+  "shell-version": ["46", "47", "48", "49", "50"],
+  "settings-schema": "org.gnome.shell.extensions.ubuntutool",
+  "url": "https://github.com/zhaoshi2000/UbuntuTool",
+  "version": 2,
+  "version-name": "0.2.0",
+  "session-modes": ["user"]
+}

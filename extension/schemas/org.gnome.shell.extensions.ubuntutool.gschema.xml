@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.ubuntutool" path="/org/gnome/shell/extensions/ubuntutool/">
+    <key name="open-clipboard" type="as"><default>['&lt;Super&gt;v']</default><summary>Open clipboard history</summary></key>
+    <key name="open-toolbox" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;t']</default><summary>Open UbuntuTool toolbox</summary></key>
+    <key name="take-screenshot" type="as"><default>['&lt;Alt&gt;a']</default><summary>Select a screenshot region and annotate</summary></key>
+    <key name="tool-request" type="s"><default>''</default><summary>Local toolbox action request</summary></key>
+    <key name="tool-result" type="s"><default>''</default><summary>Local toolbox action result</summary></key>
+    <key name="open-files" type="as"><default>['&lt;Super&gt;e']</default><summary>Open files</summary></key>
+    <key name="open-run" type="as"><default>['&lt;Super&gt;r']</default><summary>Open run dialog</summary></key>
+    <key name="open-settings" type="as"><default>['&lt;Super&gt;i']</default><summary>Open system settings</summary></key>
+    <key name="open-search" type="as"><default>['&lt;Super&gt;s']</default><summary>Search</summary></key>
+    <key name="open-quick-settings" type="as"><default>['&lt;Super&gt;a']</default><summary>Quick settings</summary></key>
+    <key name="open-task-manager" type="as"><default>['&lt;Control&gt;&lt;Shift&gt;Escape']</default><summary>Task manager</summary></key>
+    <key name="open-emoji" type="as"><default>['&lt;Super&gt;period']</default><summary>Emoji picker</summary></key>
+    <key name="minimize-all" type="as"><default>['&lt;Super&gt;m']</default><summary>Minimize all windows on the current workspace</summary></key>
+    <key name="restore-all" type="as"><default>['&lt;Super&gt;&lt;Shift&gt;m']</default><summary>Restore the last minimized set of windows</summary></key>
+    <key name="windows-profile" type="b"><default>true</default><summary>Apply Windows-style system shortcuts</summary></key>
+    <key name="paused" type="b"><default>false</default><summary>Pause history collection</summary></key>
+    <key name="capture-images" type="b"><default>true</default><summary>Keep image history</summary></key>
+    <key name="persist-history" type="b"><default>true</default><summary>Remember history after logout</summary></key>
+    <key name="auto-paste" type="b"><default>true</default><summary>Paste the selected history item into the previous window</summary></key>
+    <key name="history-limit" type="i"><range min="10" max="500"/><default>100</default><summary>Maximum history items</summary></key>
+    <key name="retention-days" type="i"><range min="1" max="365"/><default>30</default><summary>Keep unpinned history for this many days</summary></key>
+    <key name="custom-shortcuts" type="s"><default>'[]'</default><summary>User-defined commands and shortcuts</summary></key>
+    <key name="system-overrides" type="s"><default>'{}'</default><summary>User overrides for system shortcut mappings</summary></key>
+    <key name="profile-backup" type="s"><default>'[]'</default><summary>Transactional backup of borrowed desktop shortcuts</summary></key>
+    <key name="shortcut-status" type="s"><default>'[]'</default><summary>Shortcut conflicts and unavailable actions</summary></key>
+    <key name="clear-request" type="s"><default>''</default><summary>History clear request</summary></key>
+  </schema>
+</schemalist>

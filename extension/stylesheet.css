@@ -1,0 +1,36 @@
+.ut-popup .popup-menu-content { padding: 0; border-radius: 22px; }
+.ut-root { width: 410px; padding: 20px; spacing: 14px; }
+.ut-header { spacing: 12px; padding-bottom: 2px; }
+.ut-brand-icon { color: #f5a778; background-color: rgba(233, 102, 57, 0.14); padding: 11px; border-radius: 14px; }
+.ut-title { font-size: 22px; font-weight: 800; color: #faf9fb; }
+.ut-subtitle { font-size: 11px; color: #a5a5b4; padding-top: 4px; }
+.ut-search { padding: 11px 13px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background-color: rgba(255,255,255,0.055); color: #faf9fb; }
+.ut-search:focus { border-color: #e98b61; }
+.ut-tabs { spacing: 5px; background-color: rgba(0,0,0,0.14); padding: 4px; border-radius: 12px; }
+.ut-tab { padding: 8px 12px; border-radius: 9px; color: #aaaab8; font-size: 12px; font-weight: 600; }
+.ut-tab:hover { background-color: rgba(255,255,255,0.05); }
+.ut-tab:active { background-color: #e7875d; color: #24150f; }
+.ut-scroll { max-height: 480px; min-height: 190px; }
+.ut-list { spacing: 9px; padding-right: 3px; }
+.ut-card { border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; background-color: rgba(255,255,255,0.04); }
+.ut-card:selected { border-color: rgba(239,150,103,0.72); background-color: rgba(232,131,80,0.085); }
+.ut-choose { padding: 13px; border-radius: 12px; }
+.ut-choose:hover, .ut-choose:focus { background-color: rgba(255,255,255,0.045); }
+.ut-card-content { spacing: 9px; }
+.ut-card-meta { spacing: 8px; }
+.ut-kind { font-size: 10px; font-weight: 700; color: #dfb4a3; }
+.ut-time { font-size: 10px; color: #9393a3; }
+.ut-preview { font-size: 13px; color: #ededf4; max-height: 77px; }
+.ut-thumbnail { background-color: rgba(0,0,0,0.16); border-radius: 8px; padding: 5px; }
+.ut-card-actions { spacing: 7px; padding: 9px 8px 9px 0; }
+.ut-icon-button { border-radius: 8px; color: #aaaab8; padding: 7px; }
+.ut-icon-button:hover, .ut-icon-button:focus { color: #ffd2b6; background-color: rgba(255,255,255,0.09); }
+.ut-footer { spacing: 8px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08); }
+.ut-footer-button { font-size: 11px; padding: 9px 10px; color: #c6c6d3; border-radius: 8px; }
+.ut-footer-button:hover, .ut-footer-button:focus { background-color: rgba(255,255,255,0.08); color: #fff; }
+.ut-hint { color: #888898; font-size: 10px; text-align: center; }
+.ut-empty { padding: 44px 10px; spacing: 12px; }
+.ut-empty-icon { color: #d29a7d; }
+.ut-empty-title { font-size: 14px; font-weight: 600; color: #dedee8; text-align: center; }
+.ut-dialog-title { font-size: 19px; font-weight: 700; padding-bottom: 14px; }
+.ut-capture-hint { padding: 12px 18px; border-radius: 12px; color: white; background-color: rgba(25,25,30,0.85); font-size: 14px; }

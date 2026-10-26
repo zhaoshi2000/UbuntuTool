@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+UUID='ubuntutool@zhaoshi2000'
+EXT="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$UUID"
+case "${1:-toolbox}" in
+    toolbox) exec gjs -m "$EXT/app/main.js" ;;
+    screenshot) exec gjs -m "$EXT/app/main.js" --screenshot ;;
+    prefs) exec gnome-extensions prefs "$UUID" ;;
+    status) exec gnome-extensions info "$UUID" ;;
+    enable) exec gnome-extensions enable "$UUID" ;;
+    disable) exec gnome-extensions disable "$UUID" ;;
+    restore) gnome-extensions disable "$UUID" 2>/dev/null || true; exec gjs -m "$EXT/restore-profile.js" ;;
+    *) echo '用法：ubuntutool [toolbox|screenshot|prefs|status|enable|disable|restore]' >&2; exit 2 ;;
+esac

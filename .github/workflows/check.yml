@@ -1,0 +1,20 @@
+name: Check
+on: [push, pull_request]
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check
+      - run: npm test
+      - run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin
+      - run: glib-compile-schemas --strict --dry-run extension/schemas
+      - run: bash -n scripts/install.sh scripts/uninstall.sh scripts/ubuntutool
+      - run: python3 tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UbuntuTool
+          path: dist/*.zip
