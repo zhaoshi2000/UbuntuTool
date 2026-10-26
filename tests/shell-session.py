@@ -50,7 +50,7 @@ def wait_for(callback, timeout=20, description='condition'):
         time.sleep(0.25)
     raise AssertionError(f'Timed out waiting for {description}: {error}')
 
-def run(artifacts):
+def run(artifacts, with_x11=False):
     artifacts.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='ubuntutool-shell-', ignore_cleanup_errors=True) as temp:
         base = Path(temp)
@@ -65,7 +65,7 @@ def run(artifacts):
                    XDG_CONFIG_HOME=str(base/'config'), XDG_CACHE_HOME=str(base/'cache'),
                    XDG_RUNTIME_DIR=str(base/'runtime'), GNOME_SHELL_SESSION_MODE='user',
                    LIBGL_ALWAYS_SOFTWARE='1', GALLIUM_DRIVER='llvmpipe',
-                   WAYLAND_DISPLAY='wayland-ubuntutool-test', XDG_SESSION_TYPE='wayland', GIO_USE_VFS='local')
+                   WAYLAND_DISPLAY='wayland-ubuntutool-test', XDG_SESSION_TYPE='wayland', GIO_USE_VFS='local', XWAYLAND_NO_GLAMOR='1')
         env.pop('DISPLAY', None)
         env.pop('DBUS_SESSION_BUS_ADDRESS', None)
         bootstrap = '''
@@ -73,8 +73,10 @@ python3 -c 'import json,os,sys; json.dump(dict(os.environ),open(sys.argv[1],"w")
 gsettings set org.gnome.shell enabled-extensions "['ubuntutool-test-only@local', 'ubuntutool@zhaoshi2000']"
 gsettings set org.gnome.shell welcome-dialog-last-shown-version '50.0'
 gsettings set org.gnome.shell disable-user-extensions false
-exec gnome-shell --wayland --headless --no-x11 --virtual-monitor=1280x900 --wayland-display=wayland-ubuntutool-test --mode=user
+exec gnome-shell --wayland --headless --virtual-monitor=1280x900 --wayland-display=wayland-ubuntutool-test --mode=user
 '''
+        if not with_x11:
+            bootstrap = bootstrap.replace('--wayland --headless', '--wayland --headless --no-x11')
         logfile = artifacts / 'shell.log'
         with logfile.open('w') as log:
             process = subprocess.Popen(['dbus-run-session', '--', 'sh', '-c', bootstrap, 'sh', str(base/'env.json')],
@@ -94,6 +96,7 @@ exec gnome-shell --wayland --headless --no-x11 --virtual-monitor=1280x900 --wayl
                 def extension(body):
                     return evaluate(f'(()=>{{ const e=Main.extensionManager.lookup("{UUID}").stateObj; {body} }})()')
                 wait_for(lambda: extension('return e?._alive === true;'), timeout=35, description='extension startup')
+                extension(f'e._settings.set_boolean("rdp-image-compat",{str(with_x11).lower()}); return true;')
                 assert extension('return JSON.parse(e._settings.get_string("shortcut-status"));') == []
                 print('PASS extension enabled and shortcuts registered', flush=True)
                 # Let the test-only unsafe-mode banner expire before a clean UI capture.
@@ -127,8 +130,14 @@ exec gnome-shell --wayland --headless --no-x11 --virtual-monitor=1280x900 --wayl
                          '--object-path', '/org/gnome/Shell/Screenshot', '--method', 'org.gnome.Shell.Screenshot.ScreenshotArea',
                          *map(str, rectangle), 'false', str(artifacts/'clipboard-panel.png')])
                 extension('e._settings.set_boolean("auto-paste",false); e._select(e._model.entries.find(item=>item.kind==="image")); return true;')
+                if with_x11:
+                    wait_for(lambda: extension('return e._selection.get_mimetypes(imports.gi.Meta.SelectionType.SELECTION_CLIPBOARD).includes("image/bmp");'), description='native PNG + BMP clipboard formats')
                 extension('e._clipboard.get_content(imports.gi.St.ClipboardType.CLIPBOARD,"image/png",(_clipboard,bytes)=>{globalThis.utImageRoundtrip=bytes?.get_size()??0;}); return true;')
                 assert wait_for(lambda: evaluate('globalThis.utImageRoundtrip ?? 0'), description='image clipboard round trip') > 0
+                if with_x11:
+                    extension('e._clipboard.get_content(imports.gi.St.ClipboardType.CLIPBOARD,"image/bmp",(_clipboard,bytes)=>{globalThis.utBmpMagic=bytes?Array.from(bytes.get_data().slice(0,2)):[];}); return true;')
+                    wait_for(lambda: evaluate('JSON.stringify(globalThis.utBmpMagic??[])==="[66,77]"'), description='real BMP encoding rather than a MIME alias')
+                assert extension('return e._model.entries.length;') == 3
                 print('PASS history popup and image clipboard restoration', flush=True)
 
                 receiver_log = (artifacts/'receiver.log').open('w')
@@ -144,6 +153,13 @@ exec gnome-shell --wayland --headless --no-x11 --virtual-monitor=1280x900 --wayl
                 wait_for(lambda: extension('return e._panel.indicator.menu.isOpen;'), description='actual Super+V binding')
                 extension('e._select(e._model.entries.find(item=>item.kind==="text" && item.text.startsWith("Hello"))); return true;')
                 wait_for(lambda: json.loads(receiver_state.read_text()).get('text') == 'Hello UbuntuTool — 文本历史', description='automatic paste into GTK application')
+                extension('e._panel.filter="text";e._panel.toggle();e._panel.render();e._panel._activeIndex=e._panel._rows.findIndex(r=>r.entry.text.startsWith("第二"));e._panel._highlight();return true;')
+                evaluate('(()=>{const C=imports.gi.Clutter;const t=imports.gi.GLib.get_monotonic_time();utKeyboard.notify_keyval(t,C.KEY_Control_L,C.KeyState.PRESSED);utKeyboard.notify_keyval(t+1,C.KEY_Return,C.KeyState.PRESSED);utKeyboard.notify_keyval(t+2,C.KEY_Return,C.KeyState.RELEASED);utKeyboard.notify_keyval(t+3,C.KEY_Control_L,C.KeyState.RELEASED);return true;})()')
+                wait_for(lambda: extension('return !e._panel.indicator.menu.isOpen;'), description='Ctrl+Enter copy-only selection')
+                time.sleep(0.3)
+                assert json.loads(receiver_state.read_text())['text'] == 'Hello UbuntuTool — 文本历史'
+                extension('e._panel.filter="all";return true;')
+                print('PASS Ctrl+Enter copies without injecting a paste into the Ubuntu application', flush=True)
                 extension('e._activate("minimize-all"); return true;')
                 wait_for(lambda: evaluate('global.get_window_actors().some(a=>a.meta_window.get_title()==="UbuntuTool paste target" && a.meta_window.minimized)'), description='minimize all')
                 extension('e._activate("restore-all"); return true;')
@@ -271,8 +287,19 @@ exec gnome-shell --wayland --headless --no-x11 --virtual-monitor=1280x900 --wayl
                     mount = base/'runtime'/name
                     assert mount.parent == base/'runtime'
                     subprocess.run(['fusermount3', '-uz', str(mount)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Xwayland can create its own process group. Clean only this test's
+                # private runtime, never any process attached to the user's desktop.
+                for proc in Path('/proc').iterdir():
+                    if not proc.name.isdigit(): continue
+                    try:
+                        items = (proc/'environ').read_bytes().split(b'\0')
+                        if f'XDG_RUNTIME_DIR={base}/runtime'.encode() in items:
+                            os.kill(int(proc.name), signal.SIGKILL)
+                    except (OSError, ProcessLookupError): pass
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--artifacts', type=Path, default=ROOT/'work/integration')
-    run(parser.parse_args().artifacts.resolve())
+    parser.add_argument('--with-x11', action='store_true', help='Also exercise the native Xwayland multi-format provider')
+    args = parser.parse_args()
+    run(args.artifacts.resolve(), args.with_x11)

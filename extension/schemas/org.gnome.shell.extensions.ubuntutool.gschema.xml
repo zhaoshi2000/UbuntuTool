@@ -20,6 +20,8 @@
     <key name="capture-images" type="b"><default>true</default><summary>Keep image history</summary></key>
     <key name="persist-history" type="b"><default>true</default><summary>Remember history after logout</summary></key>
     <key name="auto-paste" type="b"><default>true</default><summary>Paste the selected history item into the previous window</summary></key>
+    <key name="rdp-image-compat" type="b"><default>true</default><summary>Offer a real BMP fallback for Microsoft Remote Desktop clipboard redirection</summary></key>
+    <key name="rdp-bridge-status" type="s"><default>''</default><summary>Status of the last RDP image clipboard publication</summary></key>
     <key name="history-limit" type="i"><range min="10" max="500"/><default>100</default><summary>Maximum history items</summary></key>
     <key name="retention-days" type="i"><range min="1" max="365"/><default>30</default><summary>Keep unpinned history for this many days</summary></key>
     <key name="custom-shortcuts" type="s"><default>'[]'</default><summary>User-defined commands and shortcuts</summary></key>

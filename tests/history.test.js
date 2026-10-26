@@ -57,6 +57,8 @@ test('sensitive MIME hints are ignored and images take precedence over text fall
     assert.equal(chooseMime(['image/png', 'text/plain']), 'image/png');
     assert.equal(chooseMime(['text/html']), null);
     assert.equal(chooseMime(['text/plain;charset=utf-8']), 'text/plain;charset=utf-8');
+    assert.equal(chooseMime(['image/bmp']), 'image/bmp');
+    assert.equal(chooseMime(['image/bmp', 'image/png']), 'image/png');
 });
 
 test('accelerator aliases and modifier order resolve to a common identity', () => {

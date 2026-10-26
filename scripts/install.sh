@@ -5,11 +5,13 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 ENABLE=1
 TARGET_USER=''
 UPDATED=0
+DEFER_RELOAD=0
 while (($#)); do
     case "$1" in
         --no-enable) ENABLE=0 ;;
+        --defer-reload) DEFER_RELOAD=1 ;;
         --user) shift; TARGET_USER="${1:?--user requires a username}" ;;
-        *) echo "Usage: $0 [--no-enable] [--user USER]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [--no-enable] [--defer-reload] [--user USER]" >&2; exit 2 ;;
     esac
     shift
 done
@@ -21,6 +23,7 @@ if ((EUID == 0)); then
     TARGET_UID="$(id -u "$TARGET_USER")"
     TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
     ARGS=(); ((ENABLE)) || ARGS+=(--no-enable)
+    ((DEFER_RELOAD)) && ARGS+=(--defer-reload)
     exec runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" \
         XDG_RUNTIME_DIR="/run/user/$TARGET_UID" \
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$TARGET_UID/bus" \
@@ -43,9 +46,11 @@ glib-compile-schemas --strict "$STAGE/schemas"
 if [[ -L "$DEST" ]]; then echo '扩展目录是符号链接，停止安装以保留现有内容。' >&2; exit 1; fi
 if [[ -d "$DEST" ]]; then
     UPDATED=1
-    gnome-extensions disable "$UUID" 2>/dev/null || true
-    # Also recover borrowed shortcuts if a prior Shell crash prevented disable().
-    gjs -m "$DEST/restore-profile.js" || { echo '旧快捷键备份未能恢复，停止更新。' >&2; exit 1; }
+    if ((!DEFER_RELOAD)); then
+        gnome-extensions disable "$UUID" 2>/dev/null || true
+        # Also recover borrowed shortcuts if a prior Shell crash prevented disable().
+        gjs -m "$DEST/restore-profile.js" || { echo '旧快捷键备份未能恢复，停止更新。' >&2; exit 1; }
+    fi
     BACKUP="$DATA_HOME/ubuntutool-backups/$(date +%Y%m%d-%H%M%S)-$$"
     mkdir -p -- "$(dirname -- "$BACKUP")"
     mv -- "$DEST" "$BACKUP"
@@ -64,7 +69,9 @@ Icon=applications-utilities-symbolic
 Terminal=false
 Categories=Utility;Settings;
 DESKTOP
-if ((ENABLE)); then
+if ((DEFER_RELOAD && UPDATED)); then
+    echo '新版本已安装，当前会话继续运行旧版，未重启桌面或远程连接。保存工作后注销并重新登录以完整载入更新。'
+elif ((ENABLE)); then
     if gnome-extensions enable "$UUID" 2>/dev/null; then
         if ((UPDATED)); then
             echo 'UbuntuTool 更新文件已安装。GNOME 会缓存旧版扩展代码，请注销并重新登录后使用新增功能。'

@@ -47,6 +47,10 @@ def run():
         source = Gio.SettingsSchemaSource.new_from_directory(str(extension/'schemas'), Gio.SettingsSchemaSource.get_default(), False)
         own = Gio.Settings.new_full(source.lookup('org.gnome.shell.extensions.ubuntutool', False), None, None)
         own.set_string('profile-backup', json.dumps(backup)); Gio.Settings.sync()
+        command(['bash', str(ROOT/'scripts/install.sh'), '--defer-reload', '--no-enable'])
+        assert command(['gsettings', 'get', 'org.gnome.shell.keybindings', 'toggle-message-tray']).strip() == "['<Super>m']"
+        assert json.loads(own.get_string('profile-backup')) == backup
+        print('PASS deferred update preserves active shortcut bindings and recovery data', flush=True)
         command(['gjs', '-m', str(extension/'restore-profile.js')])
         assert command(['gsettings', 'get', 'org.gnome.shell.keybindings', 'toggle-message-tray']).strip() == baseline
         print('PASS standalone crash recovery', flush=True)

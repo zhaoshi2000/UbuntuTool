@@ -28,7 +28,7 @@ export class CaptureController {
         try {
             let info;
             while ((info = iterator.next_file(null))) {
-                if (/^(capture|export)-[0-9a-f-]{36}\.png$/.test(info.get_name()) &&
+                if (/^(capture|export|clipboard)-[0-9a-f-]{36}\.(png|jpg|webp)$/.test(info.get_name()) &&
                     info.get_attribute_uint64('time::modified') < Date.now() / 1000 - 7 * 86400) {
                     try { folder.get_child(info.get_name()).delete(null); } catch (_) { /* retry next launch */ }
                 }

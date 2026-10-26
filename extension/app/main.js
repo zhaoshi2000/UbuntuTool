@@ -4,7 +4,8 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import {ScreenshotEditor} from './editor.js';
-import {getSettings, requestTool, UUID} from './settings.js';
+import {getSettings, requestTool, UUID, EXTENSION_DIR} from './settings.js';
+import {publishCompatibleImage} from '../clipboard.js';
 
 const settings = getSettings();
 const app = new Adw.Application({application_id: 'io.github.zhaoshi2000.UbuntuTool', flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE});
@@ -89,7 +90,20 @@ async function openImage() {
 
 function openEditor(path, temporary) {
     try {
-        const editor = new ScreenshotEditor(app, path, {temporary, copyImage: file => requestTool(settings, 'copy-image', {path: file.get_path()})});
+        const editor = new ScreenshotEditor(app, path, {temporary, copyImage: async file => {
+            if (settings.get_boolean('rdp-image-compat')) {
+                try {
+                    const directory = GLib.build_filenamev([GLib.get_user_cache_dir(), 'ubuntutool', 'captures']);
+                    const [, data] = file.load_contents(null);
+                    await publishCompatibleImage(EXTENSION_DIR, directory, new GLib.Bytes(data), 'image/png');
+                    settings.set_string('rdp-bridge-status', '兼容图片已就绪：PNG + Windows 位图');
+                    return;
+                } catch (error) {
+                    settings.set_string('rdp-bridge-status', `保留原始图片格式：${error.message}`);
+                }
+            }
+            return requestTool(settings, 'copy-image', {path: file.get_path(), originalOnly: true});
+        }});
         editor.present(); editor.area.grab_focus();
     } catch (error) { showHub(); message(`无法打开截图：${error.message}`); }
 }

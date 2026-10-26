@@ -119,7 +119,7 @@ export class HistoryModel {
 export function chooseMime(mimes) {
     if (mimes.some(mime => /passwordmanagerhint|keepass|1password|bitwarden|application\/x-secret/i.test(mime)))
         return null;
-    return ['image/png', 'image/jpeg', 'image/webp',
+    return ['image/png', 'image/jpeg', 'image/webp', 'image/bmp',
         'text/plain;charset=utf-8', 'text/plain;charset=UTF-8', 'text/plain', 'UTF8_STRING']
         .find(mime => mimes.includes(mime)) ?? null;
 }

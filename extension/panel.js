@@ -147,7 +147,7 @@ export class ClipboardPanel {
         this._activeIndex = Math.min(this._activeIndex, Math.max(0, this._rows.length - 1));
         this._highlight();
         this.hint.text = this.settings.get_boolean('auto-paste') ?
-            '↑↓ 选择  ·  Enter 粘贴  ·  Esc 关闭' : '↑↓ 选择  ·  Enter 复制  ·  Ctrl + V 粘贴';
+            '↑↓ 选择 · Enter 粘贴 · Ctrl+Enter 仅复制' : '↑↓ 选择 · Enter 复制 · 可回 Windows 粘贴';
     }
 
     _addRow(entry) {
@@ -175,6 +175,7 @@ export class ClipboardPanel {
         choose.connect('clicked', () => this.select(entry));
         row.add_child(choose);
         const actions = new St.BoxLayout({vertical: true, style_class: 'ut-card-actions'});
+        actions.add_child(button('edit-copy-symbolic', '仅复制，可回 Windows 粘贴', () => this.select(entry, {copyOnly: true})));
         actions.add_child(button(entry.pinned ? 'view-pin-symbolic' : 'list-add-symbolic', entry.pinned ? '取消固定' : '固定记录', () => {
             try { this.model.togglePin(entry.id); this.extension.historyChanged(); }
             catch (error) { Main.notify('UbuntuTool', error.message); }
@@ -204,7 +205,7 @@ export class ClipboardPanel {
             return Clutter.EVENT_STOP;
         }
         if ([Clutter.KEY_Return, Clutter.KEY_KP_Enter].includes(key) && this._rows.length) {
-            this.select(this._rows[this._activeIndex].entry);
+            this.select(this._rows[this._activeIndex].entry, {copyOnly: (event.get_state() & Clutter.ModifierType.CONTROL_MASK) !== 0});
             return Clutter.EVENT_STOP;
         }
         if (key === Clutter.KEY_Escape) {

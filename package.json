@@ -1,6 +1,6 @@
 {
   "name": "ubuntu-tool",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Ubuntu desktop toolbox with Windows-style shortcuts, image clipboard history and annotated screenshots",

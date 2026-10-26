@@ -12,6 +12,7 @@ import {HistoryStorage} from './storage.js';
 import {ShortcutManager} from './shortcuts.js';
 import {ClipboardPanel} from './panel.js';
 import {CaptureController, captureDirectory} from './capture.js';
+import {publishCompatibleImage, bitmapToPng, MAX_BITMAP_BYTES} from './clipboard.js';
 
 export default class UbuntuToolExtension extends Extension {
     enable() {
@@ -34,7 +35,7 @@ export default class UbuntuToolExtension extends Extension {
         this._clipboard = St.Clipboard.get_default();
         this._selection = global.display.get_selection();
         this._previousWindow = global.display.focus_window;
-        this._panel = new ClipboardPanel(this, this._model, this._storage, this._settings, entry => this._select(entry));
+        this._panel = new ClipboardPanel(this, this._model, this._storage, this._settings, (entry, options) => this._select(entry, options));
         this._shortcuts = new ShortcutManager(this._settings, action => this._activate(action));
         this._captureController = new CaptureController(this);
         // Requests from a previous login are not replayed unexpectedly.
@@ -104,14 +105,26 @@ export default class UbuntuToolExtension extends Extension {
             return;
         try {
             const image = mime.startsWith('image/');
-            const bytes = await this._read(mime, image ? MAX_IMAGE_BYTES : MAX_TEXT_BYTES);
+            let bytes = await this._read(mime, mime === 'image/bmp' ? MAX_BITMAP_BYTES : (image ? MAX_IMAGE_BYTES : MAX_TEXT_BYTES));
             if (!this._alive || generation !== this._generation || !bytes.get_size() || this._settings.get_boolean('paused'))
                 return;
+            if (mime === 'image/bmp') {
+                bytes = bitmapToPng(bytes);
+                if (bytes.get_size() > MAX_IMAGE_BYTES) return;
+            }
+            let storedMime = mime === 'image/bmp' ? 'image/png' : mime;
+            if (mime === 'image/png' && this._localImagePublication &&
+                GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA256, bytes) === this._localImagePublication.pngHash) {
+                storedMime = this._localImagePublication.mime;
+                bytes = this._localImagePublication.bytes;
+            } else if (mime !== 'image/bmp') {
+                this._localImagePublication = null;
+            }
             const id = GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA256, bytes);
             const now = Date.now();
-            const entry = {id, kind: image ? 'image' : 'text', mime, byteSize: bytes.get_size(), createdAt: now, updatedAt: now, pinned: false};
+            const entry = {id, kind: image ? 'image' : 'text', mime: storedMime, byteSize: bytes.get_size(), createdAt: now, updatedAt: now, pinned: false};
             if (image) {
-                const suffix = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp'}[mime];
+                const suffix = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp'}[storedMime];
                 entry.imageName = `${id}.${suffix}`;
                 await this._storage.writeImage(entry.imageName, bytes);
                 if (!this._alive || generation !== this._generation)
@@ -139,17 +152,20 @@ export default class UbuntuToolExtension extends Extension {
             this._panel.render();
     }
 
-    _select(entry) {
+    async _select(entry, {copyOnly = false} = {}) {
+        if (this._publishingSelection) return;
+        this._publishingSelection = true;
         const target = this._previousWindow ?? global.display.focus_window;
         try {
             if (entry.kind === 'image')
-                this._clipboard.set_content(St.ClipboardType.CLIPBOARD, entry.mime, this._storage.readImage(entry.imageName));
+                await this._publishImage(this._storage.readImage(entry.imageName), entry.mime);
             else
                 this._clipboard.set_text(St.ClipboardType.CLIPBOARD, entry.text);
+            if (!this._alive) return;
             this._panel.close();
             this._model.add({...entry, updatedAt: Date.now()});
             this.historyChanged();
-            if (this._settings.get_boolean('auto-paste') && target) {
+            if (!copyOnly && this._settings.get_boolean('auto-paste') && target) {
                 target.activate(global.get_current_time());
                 this._later(160, () => {
                     // Do not paste into another window if the user changed focus during the delay.
@@ -159,7 +175,29 @@ export default class UbuntuToolExtension extends Extension {
             }
         } catch (error) {
             Main.notifyError('UbuntuTool', `无法恢复剪贴板内容：${error.message}`);
-        }
+        } finally { this._publishingSelection = false; }
+    }
+
+    _publishImage(bytes, mime, {compatible = this._settings.get_boolean('rdp-image-compat')} = {}) {
+        const queued = (this._publicationQueue ?? Promise.resolve()).catch(() => {}).then(async () => {
+            if (!this._alive) return;
+            if (compatible) {
+                try {
+                    const publication = await publishCompatibleImage(this.path, captureDirectory(), bytes, mime);
+                    if (!this._alive) return;
+                    this._clipboardProvider = publication.process;
+                    this._localImagePublication = {pngHash: publication.pngHash, bytes, mime};
+                    this._settings.set_string('rdp-bridge-status', '兼容图片已就绪：PNG + Windows 位图');
+                    return;
+                } catch (error) {
+                    if (!this._alive) return;
+                    this._settings.set_string('rdp-bridge-status', `使用原图片格式；兼容提供程序不可用：${error.message}`);
+                }
+            }
+            this._clipboard.set_content(St.ClipboardType.CLIPBOARD, mime, bytes);
+        });
+        this._publicationQueue = queued;
+        return queued;
     }
 
     _paste() {
@@ -215,7 +253,7 @@ export default class UbuntuToolExtension extends Extension {
         Main.notify('UbuntuTool', `未安装对应应用：${names[0]}。可在设置中改为自定义命令。`);
     }
 
-    _handleToolRequest() {
+    async _handleToolRequest() {
         const raw = this._settings.get_string('tool-request');
         if (!raw) return;
         this._settings.set_string('tool-request', '');
@@ -236,7 +274,8 @@ export default class UbuntuToolExtension extends Extension {
                 const [, bytes] = file.load_contents(null);
                 const signature = [137, 80, 78, 71, 13, 10, 26, 10];
                 if (!signature.every((value, i) => bytes[i] === value)) throw new Error('截图不是 PNG 图片。');
-                this._clipboard.set_content(St.ClipboardType.CLIPBOARD, 'image/png', new GLib.Bytes(bytes));
+                await this._publishImage(new GLib.Bytes(bytes), 'image/png', {compatible: !request.originalOnly && this._settings.get_boolean('rdp-image-compat')});
+                if (!this._alive) return;
                 file.delete(null);
             } else if (['clipboard', 'screenshot', 'toolbox', 'preferences'].includes(request.action)) {
                 if (request.action === 'preferences') this.openPreferences();
@@ -303,5 +342,8 @@ export default class UbuntuToolExtension extends Extension {
         this._clipboard = null;
         this._settings = null;
         this._readCancellable = null;
+        this._localImagePublication = null;
+        this._clipboardProvider = null;
+        this._publicationQueue = null;
     }
 }

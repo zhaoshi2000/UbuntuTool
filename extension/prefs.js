@@ -99,6 +99,11 @@ export default class UbuntuToolPreferences extends ExtensionPreferences {
         clipboard.add(behavior);
         this._switch(behavior, 'paused', '暂停记录', '暂停后仍可浏览和粘贴已有记录。');
         this._switch(behavior, 'capture-images', '保留图片', '支持 PNG、JPEG、WebP，单张最大 20 MB。');
+        this._switch(behavior, 'rdp-image-compat', '微软远程桌面图片兼容', '复制图片时同时提供原格式与真实 BMP 位图，便于回到 Windows 粘贴。兼容转换最多 1600 万像素，超限仍保留原格式。');
+        const remoteStatus = new Adw.ActionRow({title: '远程桌面图片状态', subtitle: this.settings.get_string('rdp-bridge-status') || '在微软远程桌面中开启剪贴板重定向；选择记录旁的复制按钮或按 Ctrl+Enter，仅复制、不向 Ubuntu 窗口粘贴。', subtitle_lines: 0});
+        behavior.add(remoteStatus);
+        const remoteStatusSignal = this.settings.connect('changed::rdp-bridge-status', () => { remoteStatus.subtitle = this.settings.get_string('rdp-bridge-status') || '下次复制图片时检查兼容提供程序。'; });
+        window.connect('close-request', () => { this.settings.disconnect(remoteStatusSignal); return false; });
         this._switch(behavior, 'auto-paste', '选择后自动粘贴', '面板关闭后向原窗口发送 Ctrl+V；终端等使用不同粘贴键的应用请关闭此项并自行粘贴。');
         this._switch(behavior, 'persist-history', '重启后保留历史', '关闭会清除磁盘中的历史索引；本次会话中的图片临时文件在退出后清理。');
         this._spin(behavior, 'history-limit', '历史条数上限', '固定条目优先保留，最多固定 50 条。', 10, 500, 10);
